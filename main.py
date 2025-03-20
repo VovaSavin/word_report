@@ -1,7 +1,6 @@
 import os
 import random
 import platform, shutil
-from datetime import datetime
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -9,17 +8,12 @@ from docx.shared import Pt, Inches
 from docx.text.paragraph import Paragraph
 
 FONT_FAMILY = [
-    ("NinaCTT", 14),
-    ("BetinaScriptC", 14),
-    ("BirchCTT", 14),
-    ("FreestyleScript", 18),
-    ("MisterK", 22),
+    ("NinaCTT", 14.0),
+    ("BetinaScriptC", 14.0),
+    ("BirchCTT", 14.0),
+    ("FreestyleScript", 18.0),
+    ("MisterK", 22.0),
 ]
-
-MAIN_TXT = """
-\tПрошу звільнити мене за власним бажанням з лав національної гвардії України. Зобов’язуюсь відслужити два повних тижні 
-у розмірі 14 календарних днів. Буду пити та гуляти ці два тижні.
-"""
 
 
 def replacer(txt: str):
@@ -68,6 +62,29 @@ def p_indent_first_line(idn: float, paragraph: Paragraph):
     fromat_par.first_line_indent = Inches(idn)
 
 
+class GetDocument:
+    def __init__(self, path_to_file: str):
+        self.path_to_file = path_to_file
+        self.doc = Document(self.path_to_file)
+        self.font_type = random.choice(FONT_FAMILY)
+
+    def change_font(self, paragraph: Paragraph):
+        for pars in paragraph.runs:
+            pars.text = replacer(pars.text)
+            font_4 = pars.font
+            font_4.size = Pt(self.font_type[1])
+            font_4.name = self.font_type[0]
+
+
+    def start_change_font(self):
+        for paragraph in self.doc.paragraphs:
+            self.change_font(paragraph)
+
+        if not os.path.exists(f"report_new"):
+            os.mkdir(f"report_new")
+        self.doc.save(f"report_new/{self.path_to_file}.docx")
+
+
 class CreateDocument:
     def __init__(
             self, first_name: str, last_name: str,
@@ -84,7 +101,7 @@ class CreateDocument:
     def set_paragraph_head(self, txt: str, left_indent=True):
         pargrph = self.doc.add_paragraph(txt)
         if left_indent:
-            p_indent_l(2.6, pargrph)
+            p_indent_l(2.7, pargrph)
         else:
             pargrph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run_4 = pargrph.runs[0]
@@ -93,7 +110,7 @@ class CreateDocument:
         font_4.name = self.font_type[0]
 
     def set_paragraph_main(self):
-        text = self.doc.add_paragraph(replacer(MAIN_TXT))
+        text = self.doc.add_paragraph(replacer(self.major_data["text"]))
         run_4 = text.runs[0]
         font_4 = run_4.font
         font_4.size = Pt(self.font_type[1])
@@ -101,10 +118,33 @@ class CreateDocument:
 
     def set_paragraph_date(self, txt: str):
         pargrph = self.doc.add_paragraph(txt)
+        p_indent_l(4.5, pargrph)
         run_4 = pargrph.runs[0]
         font_4 = run_4.font
         font_4.size = Pt(self.font_type[1])
         font_4.name = self.font_type[0]
+
+    def set_paragraph_from(self, txt: str):
+        pargrph = self.doc.add_paragraph(txt)
+        p_indent_r(4.0, pargrph)
+        run_4 = pargrph.runs[0]
+        font_4 = run_4.font
+        font_4.size = Pt(self.font_type[1])
+        font_4.name = self.font_type[0]
+
+    #     Таблиця
+    #     tb = self.doc.add_table(rows=1, cols=2)
+    #     cell_1 = tb.cell(0, 0)
+    #     cell_1.text = txt
+    #     cell_2 = tb.cell(0, 1)
+    #     cell_2.text = replacer(self.major_data["date"])
+    #     cell_1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    #     cell_2.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    #     cell_1.paragraphs[0].runs[0].font.size = Pt(self.font_type[1])
+    #     cell_1.paragraphs[0].runs[0].font.name = self.font_type[0]
+    #     cell_2.paragraphs[0].runs[0].font.size = Pt(self.font_type[1])
+    #     cell_2.paragraphs[0].runs[0].font.name = self.font_type[0]
+    #     cel
 
     def start_write_raports(self):
         self.set_paragraph_head(replacer("Командиру військової частини 3027"))
@@ -114,8 +154,14 @@ class CreateDocument:
         self.doc.add_paragraph("\n")
         self.set_paragraph_head("Рапорт", left_indent=False)
         self.set_paragraph_main()
+
         self.doc.add_paragraph("\n")
-        self.set_paragraph_date(self.major_data["date"])
+        self.set_paragraph_from(
+            replacer(
+                f"{self.military_rank} {self.first_name} {self.last_name}"
+            )
+        )
+        self.set_paragraph_date(replacer(self.major_data["date"]))
         self.doc.save(f"{self.first_name}_{self.last_name}_рапорт.docx")
 
 
@@ -129,7 +175,7 @@ class PreviousPrepared:
     def __init__(self):
         self.file_names = r"names.txt"
         self.pathes_systems = {
-            "Windows": r"C:/Windows/Fonts",
+            "Windows": r"C:\Windows\Fonts",
             "Linux": r"/usr/share/fonts",
             "Darwin": r"/Library/Fonts",
         }
@@ -143,15 +189,10 @@ class PreviousPrepared:
         os_name = platform.system()
         files_list = os.listdir(r"fonts")
         for x in range(len(files_list)):
-            print(
-                os.path.exists(
-                    self.pathes_systems[os_name] + files_list[x]
-                )
-            )
             if not os.path.exists(
-                    self.pathes_systems[os_name] + files_list[x]
+                    self.pathes_systems[os_name] + "/" + files_list[x]
             ) and not os.path.isfile(
-                self.pathes_systems[os_name] + files_list[x]
+                self.pathes_systems[os_name] + "/" + files_list[x]
             ):
                 shutil.copy(r"fonts/{}".format(files_list[x]), self.pathes_systems[os_name])
             else:
@@ -169,15 +210,46 @@ class PreviousPrepared:
             return array_content
 
 
-def run(data: dict, switcher: bool = True):
+class GetterFiles:
+    def __init__(self, path_files: str, cd: str):
+        self.path_files = path_files
+        self.cd = cd
+        if self.cd:
+            os.chdir(self.cd)
+        else:
+            os.chdir(self.path_files)
+
+    def get_docx_files(self) -> list[str] | bool:
+        """
+        Отримує списки ворд файлів в директорії
+        та повертає їх список
+        інакше повертає None
+        :return:
+        """
+        docx_files = []
+        if self.path_files:
+            files_list = os.listdir(self.path_files)
+            if len(files_list) > 0:
+                for x in range(len(files_list)):
+                    if files_list[x].endswith(".docx") or files_list[x].endswith(".DOCX"):
+                        docx_files.append(files_list[x])
+                    else:
+                        continue
+            return docx_files
+        else:
+            return False
+
+
+def run(data: dict, switcher: bool = True, path: str = None):
     """
     Запускає цикл перебору імен
     та запускає метод класу CreateDocument для формування *.docx файлів
+    або викликає GetterFiles і зміює шрифт у копіях файлів
     :return:
     """
     helper = PreviousPrepared()
     helper.copy_fonts()
-    if switcher:
+    if not switcher:
         array_militaries = helper.open_get_names()
         for x in range(len(array_militaries)):
             first = array_militaries[x].split()[0].strip()
@@ -191,10 +263,14 @@ def run(data: dict, switcher: bool = True):
             )
             my_doc.start_write_raports()
     else:
-        pass
-
-
-run(
-    {"rank": "test", "full_name": "test test", "date": "05.03.2025"},
-    switcher=True,
-)
+        print("Strart copy")
+        gf = GetterFiles(data["path_to_directory"], cd=path)
+        files = gf.get_docx_files()
+        print(f"Знайдено {len(files)} файлів *.docx")
+        if files:
+            for y in range(len(files)):
+                print(f"Копіюємо {files[y]}")
+                fl_doc = GetDocument(files[y])
+                fl_doc.start_change_font()
+                print(f"Завершено копіювання {files[y]}")
+        print("End copy")
